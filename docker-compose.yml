@@ -73,6 +73,33 @@ services:
     # is identical in both places.
     stop_grace_period: 30s
 
+  # Two replicas by default. One replica would let a broken Redis backplane
+  # pass every local test — the failure only appears when two processes have
+  # to agree, which is exactly the condition production runs in.
+  collab:
+    build:
+      context: .
+      dockerfile: services/collab/Dockerfile
+    environment:
+      DATABASE_URL: postgres://nook:nook_local_only@postgres:5432/nook
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local_dev_secret_replace_in_every_real_environment
+      LOG_LEVEL: info
+      PORT: 3001
+    deploy:
+      replicas: 2
+    ports: ["3001-3002:3001"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Longer than api: draining sockets takes longer than draining requests.
+    stop_grace_period: 40s
+
 volumes:
   pgdata:
   miniodata:
