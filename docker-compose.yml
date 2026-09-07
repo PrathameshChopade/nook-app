@@ -159,6 +159,23 @@ services:
       retries: 12
     stop_grace_period: 40s
 
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+    # 8090 on the host, not 8080: the kind cluster maps its ingress to 8080,
+    # and a local stack that cannot run beside the local cluster is not much
+    # of a local stack.
+    ports: ["8090:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    stop_grace_period: 10s
+
 volumes:
   pgdata:
   miniodata:
