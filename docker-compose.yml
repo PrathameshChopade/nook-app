@@ -1,0 +1,53 @@
+# One command from a cold start: docker compose up --build
+#
+# Ports are deliberately non-default on the host side. Nook's Postgres must not
+# collide with a Postgres already running on 5432, and finding that out through
+# a confusing connection error wastes an afternoon.
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: nook
+      POSTGRES_PASSWORD: nook_local_only
+      POSTGRES_DB: nook
+    ports: ["55432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nook -d nook"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    ports: ["56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # MinIO stands in for S3 locally so the presigned-URL path is exercised the
+  # same way it will be against the real thing. Same SDK, same signature.
+  minio:
+    image: minio/minio:RELEASE.2024-09-13T20-26-02Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: nook
+      MINIO_ROOT_PASSWORD: nook_local_only
+    ports: ["59000:9000", "59001:9001"]
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
+  miniodata:

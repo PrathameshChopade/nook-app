@@ -1,0 +1,14 @@
+{
+  "name": "nook",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "dev": "docker compose up --build",
+    "down": "docker compose down -v",
+    "migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/0001_init.sql",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  }
+}
