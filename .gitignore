@@ -18,3 +18,5 @@ credentials.csv
 .idea/
 .vscode/
 coverage/
+
+# Generated, but committed deliberately — see services/api/openapi.json

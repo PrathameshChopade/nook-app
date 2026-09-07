@@ -48,6 +48,31 @@ services:
       timeout: 3s
       retries: 20
 
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://nook:nook_local_only@postgres:5432/nook
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local_dev_secret_replace_in_every_real_environment
+      LOG_LEVEL: info
+      PORT: 3000
+    ports: ["3000:3000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # The same probe paths Kubernetes will use in stage 04. Exercising them
+    # locally means the manifests are not the first place they are tried.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Matches terminationGracePeriodSeconds in stage 04, so shutdown behaviour
+    # is identical in both places.
+    stop_grace_period: 30s
+
 volumes:
   pgdata:
   miniodata:
