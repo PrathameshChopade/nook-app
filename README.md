@@ -20,12 +20,28 @@ they would make a good product.
 ## Running it
 
 ```sh
-cp .env.example .env
-docker compose up --build
+make dev
 ```
 
+One command from a cold start: builds every image, starts the stack, waits
+until it is genuinely usable, and prints where things are. `make clean` takes
+it all down including volumes. Verified from destroyed volumes to a working
+stack — collaboration, export and search all passing — in about 22 seconds
+with images cached.
+
+| | |
+| --- | --- |
+| web | http://localhost:8090 |
+| api | http://localhost:3000 |
+| collab | ws://localhost:3001 and :3002 (two replicas) |
+| MinIO console | http://localhost:59001 |
+
+`make help` lists the rest.
+
 Host ports are deliberately non-default — Postgres on 55432, Redis on 56379,
-MinIO on 59000 — so Nook never collides with something already listening.
+MinIO on 59000 — so Nook never collides with something already listening. The
+web client is on 8090 rather than 8080 because the kind cluster maps its
+ingress to 8080, and the local stack has to run beside the local cluster.
 
 MinIO stands in for S3 so the presigned-URL path is exercised locally with the
 same SDK and the same signature as the real thing.
@@ -35,6 +51,18 @@ same SDK and the same signature as the real thing.
 `db/migrations/` is mounted into Postgres and applied on first start. Every
 migration must be safe to run twice: from stage 04 they run as a pre-deploy Job
 that can be retried, so idempotency is a requirement, not a courtesy.
+
+## Images
+
+| Image | Size | Base |
+| --- | --- | --- |
+| `exporter` | 7.2 MB | distroless static, non-root |
+| `api` | 279 MB | node slim, non-root |
+| `collab` | 283 MB | node slim, non-root |
+
+The exporter exists partly to make that comparison real. Every image is
+multi-stage, digest-pinned, runs as a non-root user, and carries no build
+toolchain in its final layer.
 
 ## Deliberately not built
 
