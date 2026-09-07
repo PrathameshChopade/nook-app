@@ -54,14 +54,37 @@ header {
 }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
 .dot.connected { background: var(--accent); }
+.dot.connecting { background: #9a5a07; }
 .dot.disconnected { background: #a63d40; }
 .status { font-size: 13px; color: var(--muted); margin-right: auto; }
 .export { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
 .empty { padding: 40px 22px; color: var(--muted); }
 .error { color: #a63d40; font-size: 13px; }
 
-.editor { flex: 1; overflow-y: auto; padding: 30px 22px; }
-.editor .ProseMirror { max-width: 68ch; margin: 0 auto; outline: none; line-height: 1.65; }
+/* The scroll container is a flex column so the editable region stretches to
+   fill it. Without this the ProseMirror element is only as tall as its
+   content — a 26px strip at the top — and clicking anywhere in the blank
+   space below lands on this container instead, focusing nothing. The editor
+   then silently ignores every keystroke while looking perfectly fine. */
+.editor { flex: 1; overflow-y: auto; padding: 30px 22px; display: flex; }
+.editor .ProseMirror {
+  flex: 1;
+  min-height: 100%;
+  max-width: 68ch;
+  margin: 0 auto;
+  outline: none;
+  line-height: 1.65;
+}
+
+/* An empty document should say so rather than presenting a blank rectangle
+   that gives no indication it is ready for input. */
+.editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted);
+}
 .editor .ProseMirror p { margin: 0 0 .8em; }
 .editor .ProseMirror h1, .editor .ProseMirror h2 { color: var(--ink); }
 .editor .ProseMirror pre {

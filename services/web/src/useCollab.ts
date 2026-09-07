@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { getToken } from "./api";
 
-export type ConnectionState = "connecting" | "connected" | "disconnected";
+export type ConnectionState = "idle" | "connecting" | "connected" | "disconnected";
 
 const COLOURS = ["#0B6B5C", "#9A5A07", "#3B5BA5", "#7A3E8F", "#A63D40", "#2F6B34"];
 
@@ -17,11 +17,18 @@ const COLOURS = ["#0B6B5C", "#9A5A07", "#3B5BA5", "#7A3E8F", "#A63D40", "#2F6B34
 export function useCollab(pageId: string | null, displayName: string) {
   const [doc, setDoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [state, setState] = useState<ConnectionState>("connecting");
+  // Starts idle, not connecting: with no page selected there is no socket,
+  // and reporting "connecting" for something that will never connect is a
+  // status line that lies.
+  const [state, setState] = useState<ConnectionState>("idle");
   const [peers, setPeers] = useState(0);
 
   useEffect(() => {
-    if (!pageId) return;
+    if (!pageId) {
+      setState("idle");
+      return;
+    }
+    setState("connecting");
     const token = getToken();
     if (!token) return;
 

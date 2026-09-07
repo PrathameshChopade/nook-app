@@ -126,7 +126,7 @@ export default function App() {
         <header>
           <span className={`dot ${state}`} />
           <span className="status">
-            {state}
+            {state === "idle" ? "no page selected" : state}
             {state === "connected" && peers > 0 ? ` · ${peers} here` : ""}
           </span>
           {pageId && <button onClick={onExport}>Export Markdown</button>}
