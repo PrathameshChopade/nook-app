@@ -58,10 +58,18 @@ services:
       JWT_SECRET: local_dev_secret_replace_in_every_real_environment
       LOG_LEVEL: info
       PORT: 3000
+      S3_ENDPOINT: http://minio:9000
+      # What the browser can reach. In AWS this is unset: S3's endpoint is
+      # already public, so the signing client and the API client are the same.
+      S3_PUBLIC_ENDPOINT: http://localhost:59000
+      S3_BUCKET: nook-attachments
+      S3_ACCESS_KEY: nook
+      S3_SECRET_KEY: nook_local_only
     ports: ["3000:3000"]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
     # The same probe paths Kubernetes will use in stage 04. Exercising them
     # locally means the manifests are not the first place they are tried.
     healthcheck:
@@ -98,6 +106,57 @@ services:
       timeout: 3s
       retries: 12
     # Longer than api: draining sockets takes longer than draining requests.
+    stop_grace_period: 40s
+
+  # One-shot: creates the bucket, then exits. Services that need the bucket
+  # wait on service_completed_successfully rather than racing it.
+  minio-init:
+    image: minio/mc:RELEASE.2024-10-08T09-37-26Z
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 nook nook_local_only &&
+      mc mb --ignore-existing local/nook-attachments &&
+      echo bucket ready"
+
+  exporter:
+    build:
+      context: .
+      dockerfile: services/exporter/Dockerfile
+    environment:
+      PORT: 3003
+    ports: ["3003:3003"]
+    # No healthcheck: the distroless image has no shell and no curl, which is
+    # the trade for a 7 MB image with nothing to pivot to. Kubernetes probes it
+    # over HTTP directly and does not need a binary in the image; compose
+    # cannot, so this one is unchecked locally.
+    stop_grace_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgres://nook:nook_local_only@postgres:5432/nook
+      REDIS_URL: redis://redis:6379
+      EXPORTER_URL: http://exporter:3003
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: nook-attachments
+      S3_ACCESS_KEY: nook
+      S3_SECRET_KEY: nook_local_only
+      LOG_LEVEL: info
+      PORT: 3004
+    ports: ["3004:3004"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3004/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     stop_grace_period: 40s
 
 volumes:

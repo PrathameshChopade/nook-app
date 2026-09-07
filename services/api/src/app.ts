@@ -18,6 +18,8 @@ import { authRoutes } from "./routes/auth.js";
 import { workspaceRoutes } from "./routes/workspaces.js";
 import { pageRoutes } from "./routes/pages.js";
 import { blockRoutes } from "./routes/blocks.js";
+import { exportRoutes } from "./routes/exports.js";
+import { attachmentRoutes } from "./routes/attachments.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -172,6 +174,8 @@ export async function buildApp() {
   await app.register(workspaceRoutes, { prefix: "/v1" });
   await app.register(pageRoutes, { prefix: "/v1" });
   await app.register(blockRoutes, { prefix: "/v1" });
+  await app.register(exportRoutes, { prefix: "/v1" });
+  await app.register(attachmentRoutes, { prefix: "/v1" });
 
   void ErrorReply; // referenced by route schemas
 

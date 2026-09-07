@@ -2,6 +2,7 @@ import { buildApp, setReady } from "./app.js";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { pool } from "./db.js";
+import { exportQueue, connection } from "./queue.js";
 
 const app = await buildApp();
 
@@ -39,6 +40,8 @@ async function shutdown(signal: string) {
     // listening. Tuned against real propagation time in stage 04.
     await new Promise((r) => setTimeout(r, 3_000));
     await app.close();
+    await exportQueue.close();
+    await connection.quit();
     await pool.end();
     logger.info("shutdown complete");
     process.exit(0);
